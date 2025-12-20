@@ -1,0 +1,28 @@
+import Sidebar from '@/components/layout/Sidebar';
+
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const menuItems = [
+    { name: 'Dashboard', href: '/admin' },
+    { name: 'Users Management', href: '/admin/users' },
+    { name: 'Class Management', href: '/admin/classes' },
+    { name: 'Subject Management', href: '/admin/subjects' },
+    { name: 'Exam Management', href: '/admin/exams' },
+    { name: 'Results Management', href: '/admin/results' }, // Added
+    { name: 'Teacher Assignment', href: '/admin/assign-teacher' },
+    { name: 'Student Assignment', href: '/admin/assign-student' },
+    { name: 'Timetable', href: '/admin/timetable' },
+    { name: 'Reports', href: '/admin/reports' },
+    { name: 'Settings', href: '/admin/settings' },
+  ];
+
+  return (
+    <div className="flex">
+      <Sidebar menuItems={menuItems} />
+      <main className="flex-1">{children}</main>
+    </div>
+  );
+}

@@ -1,0 +1,288 @@
+package com.amfofana.school.services;
+
+import com.amfofana.school.dto.ClasseDTO;
+import com.amfofana.school.dto.ReportDTO;
+import com.amfofana.school.dto.UserDTO;
+import com.amfofana.school.entities.*;
+import com.amfofana.school.repositories.*;
+import jakarta.transaction.Transactional;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@Service
+public class AdminService {
+
+    private final UserRepository userRepository;
+    private final ClasseRepository classeRepository;
+    private final TeacherProfileRepository teacherProfileRepository;
+    private final StudentProfileRepository studentProfileRepository;
+    private final AttendanceRepository attendanceRepository;
+    private final ExamRepository examRepository;
+    private final SubjectRepository subjectRepository;
+    private final LearningMaterialRepository learningMaterialRepository;
+    private final TimetableRepository timetableRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final ExamResultRepository examResultRepository;
+
+    public AdminService(UserRepository userRepository, ClasseRepository classeRepository,
+                        TeacherProfileRepository teacherProfileRepository, StudentProfileRepository studentProfileRepository,
+                        AttendanceRepository attendanceRepository, ExamRepository examRepository,
+                        SubjectRepository subjectRepository, LearningMaterialRepository learningMaterialRepository,
+                        TimetableRepository timetableRepository, PasswordEncoder passwordEncoder,
+                        ExamResultRepository examResultRepository) {
+        this.userRepository = userRepository;
+        this.classeRepository = classeRepository;
+        this.teacherProfileRepository = teacherProfileRepository;
+        this.studentProfileRepository = studentProfileRepository;
+        this.attendanceRepository = attendanceRepository;
+        this.examRepository = examRepository;
+        this.subjectRepository = subjectRepository;
+        this.learningMaterialRepository = learningMaterialRepository;
+        this.timetableRepository = timetableRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.examResultRepository = examResultRepository;
+    }
+
+    // User CRUD
+    public User createUser(User user) {
+        String userId = String.format("%012d", Math.abs(UUID.randomUUID().getMostSignificantBits()));
+        user.setUserId(userId.substring(0, 12));
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        return userRepository.save(user);
+    }
+
+    public List<UserDTO> getAllUsers(String role) {
+        List<User> users;
+        if (role != null && !role.isEmpty()) {
+            users = userRepository.findByRole(Role.valueOf(role.toUpperCase()));
+        } else {
+            users = userRepository.findAll();
+        }
+        return users.stream().map(this::convertToUserDTO).collect(Collectors.toList());
+    }
+
+    public User updateUser(Long id, User userDetails) {
+        User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+        user.setName(userDetails.getName());
+        user.setEmail(userDetails.getEmail());
+        user.setRole(userDetails.getRole());
+        user.setBirthDate(userDetails.getBirthDate());
+        user.setBirthCountry(userDetails.getBirthCountry());
+        user.setBirthCity(userDetails.getBirthCity());
+        user.setAddress(userDetails.getAddress());
+        user.setGender(userDetails.getGender());
+        user.setPhoneNumber(userDetails.getPhoneNumber());
+
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    public void deleteUser(Long id) {
+        User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+        if (user.getRole() == Role.TEACHER) {
+            teacherProfileRepository.findByUser(user).ifPresent(teacherProfileRepository::delete);
+        } else if (user.getRole() == Role.STUDENT) {
+            studentProfileRepository.findByUser(user).ifPresent(studentProfileRepository::delete);
+            attendanceRepository.deleteByStudent(user);
+        }
+        userRepository.deleteById(id);
+    }
+
+    // Class CRUD
+    public ClasseDTO createClass(Classe classe) {
+        Classe savedClasse = classeRepository.save(classe);
+        return convertToClasseDTO(savedClasse);
+    }
+
+    public List<ClasseDTO> getAllClasses() {
+        return classeRepository.findAll().stream().map(this::convertToClasseDTO).collect(Collectors.toList());
+    }
+
+    public ClasseDTO updateClass(Long id, Classe classeDetails) {
+        Classe classe = classeRepository.findById(id).orElseThrow(() -> new RuntimeException("Class not found"));
+        classe.setName(classeDetails.getName());
+        classe.setGrade(classeDetails.getGrade());
+        Classe updatedClasse = classeRepository.save(classe);
+        return convertToClasseDTO(updatedClasse);
+    }
+
+    public void deleteClass(Long id) {
+        classeRepository.deleteById(id);
+    }
+
+    // Exam Management
+    public List<Exam> getExams(Long teacherId, Long classId) {
+        if (teacherId != null) {
+            User teacher = userRepository.findById(teacherId).orElseThrow(() -> new RuntimeException("Teacher not found"));
+            return examRepository.findByClasse_Teacher(teacher);
+        }
+        if (classId != null) {
+            Classe classe = classeRepository.findById(classId).orElseThrow(() -> new RuntimeException("Class not found"));
+            return examRepository.findByClasse(classe);
+        }
+        return examRepository.findAll();
+    }
+
+    // Subject CRUD
+    public Subject createSubject(Subject subject) {
+        return subjectRepository.save(subject);
+    }
+
+    public List<Subject> getAllSubjects() {
+        return subjectRepository.findAll();
+    }
+
+    public Subject updateSubject(Long id, Subject subjectDetails) {
+        Subject subject = subjectRepository.findById(id).orElseThrow(() -> new RuntimeException("Subject not found"));
+        subject.setName(subjectDetails.getName());
+        return subjectRepository.save(subject);
+    }
+
+    public void deleteSubject(Long id) {
+        subjectRepository.deleteById(id);
+    }
+
+    // Learning Material CRUD
+    public LearningMaterial createLearningMaterial(LearningMaterial material) {
+        return learningMaterialRepository.save(material);
+    }
+
+    public List<LearningMaterial> getAllLearningMaterials() {
+        return learningMaterialRepository.findAll();
+    }
+
+    public void deleteLearningMaterial(Long id) {
+        learningMaterialRepository.deleteById(id);
+    }
+
+    // Timetable CRUD
+    public Timetable createTimetableEntry(Timetable timetable) {
+        return timetableRepository.save(timetable);
+    }
+
+    public List<Timetable> getAllTimetableEntries() {
+        return timetableRepository.findAll();
+    }
+
+    public Timetable updateTimetableEntry(Long id, Timetable timetableDetails) {
+        Timetable timetable = timetableRepository.findById(id).orElseThrow(() -> new RuntimeException("Timetable entry not found"));
+        timetable.setClasse(timetableDetails.getClasse());
+        timetable.setSubject(timetableDetails.getSubject());
+        timetable.setDayOfWeek(timetableDetails.getDayOfWeek());
+        timetable.setStartTime(timetableDetails.getStartTime());
+        timetable.setEndTime(timetableDetails.getEndTime());
+        return timetableRepository.save(timetable);
+    }
+
+    public void deleteTimetableEntry(Long id) {
+        timetableRepository.deleteById(id);
+    }
+
+    // Assignments
+    public void assignTeacherToClass(Long teacherId, Long classId) {
+        User teacher = userRepository.findById(teacherId).orElseThrow(() -> new RuntimeException("Teacher not found"));
+        Classe classe = classeRepository.findById(classId).orElseThrow(() -> new RuntimeException("Class not found"));
+        
+        if (classe.getTeacher() != null && classe.getTeacher().getId().equals(teacherId)) {
+            throw new RuntimeException("Teacher is already assigned to this class");
+        }
+        
+        classe.setTeacher(teacher);
+        classeRepository.save(classe);
+    }
+
+    public void assignStudentToClass(Long studentId, Long classId) {
+        User student = userRepository.findById(studentId).orElseThrow(() -> new RuntimeException("Student not found"));
+        Classe classe = classeRepository.findById(classId).orElseThrow(() -> new RuntimeException("Class not found"));
+        
+        if (classe.getStudents().contains(student)) {
+            throw new RuntimeException("Student is already assigned to this class");
+        }
+        
+        classe.getStudents().add(student);
+        classeRepository.save(classe);
+    }
+
+    // Student Class Lookup
+    public List<ClasseDTO> getClassesForStudent(Long studentId) {
+        User student = userRepository.findById(studentId).orElseThrow(() -> new RuntimeException("Student not found"));
+        return classeRepository.findByStudentsContains(student).stream().map(this::convertToClasseDTO).collect(Collectors.toList());
+    }
+
+    // Reports
+    public ReportDTO getSummaryReport() {
+        ReportDTO report = new ReportDTO();
+        report.setTotalStudents(userRepository.countByRole(Role.STUDENT));
+        report.setTotalTeachers(userRepository.countByRole(Role.TEACHER));
+        report.setTotalAdmins(userRepository.countByRole(Role.ADMIN));
+        report.setTotalClasses(classeRepository.count());
+        report.setTotalExams(examRepository.count());
+        report.setTotalSubjects(subjectRepository.count());
+        return report;
+    }
+
+    // Profile & Settings
+    public User updateProfile(Long userId, Map<String, String> payload) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+        user.setName(payload.get("name"));
+        user.setEmail(payload.get("email"));
+        return userRepository.save(user);
+    }
+
+    public void changePassword(Long userId, String currentPassword, String newPassword) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new RuntimeException("Incorrect current password");
+        }
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
+
+    // Results Filtering
+    public List<ExamResult> filterResults(Long studentId) {
+        if (studentId != null) {
+            return examResultRepository.findByStudent_Id(studentId);
+        }
+        return examResultRepository.findAll();
+    }
+
+    // DTO Converters
+    private UserDTO convertToUserDTO(User user) {
+        if (user == null) return null;
+        UserDTO userDTO = new UserDTO();
+        userDTO.setId(user.getId());
+        userDTO.setUserId(user.getUserId());
+        userDTO.setName(user.getName());
+        userDTO.setEmail(user.getEmail());
+        userDTO.setRole(user.getRole());
+        userDTO.setBirthDate(user.getBirthDate());
+        userDTO.setBirthCountry(user.getBirthCountry());
+        userDTO.setBirthCity(user.getBirthCity());
+        userDTO.setAddress(user.getAddress());
+        userDTO.setGender(user.getGender());
+        userDTO.setPhoneNumber(user.getPhoneNumber());
+        userDTO.setCreatedAt(user.getCreatedAt());
+        return userDTO;
+    }
+
+    private ClasseDTO convertToClasseDTO(Classe classe) {
+        if (classe == null) return null;
+        ClasseDTO classeDTO = new ClasseDTO();
+        classeDTO.setId(classe.getId());
+        classeDTO.setName(classe.getName());
+        classeDTO.setGrade(classe.getGrade());
+        classeDTO.setTeacher(convertToUserDTO(classe.getTeacher()));
+        if (classe.getStudents() != null) {
+            classeDTO.setStudents(classe.getStudents().stream().map(this::convertToUserDTO).collect(Collectors.toSet()));
+        } else {
+            classeDTO.setStudents(Collections.emptySet());
+        }
+        return classeDTO;
+    }
+}

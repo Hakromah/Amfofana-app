@@ -1,0 +1,15 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/amfofana_school
+    username: postgres
+    password: postgres18
+
+  jpa:
+    hibernate:
+      ddl-auto: update # Reverted back to update
+    show-sql: true
+
+jwt:
+  secret: yZnsCIqXIOcX9uI1elv9Yg1U+dPYipDtI4FtEC2E5R7WZCXk1X7nDxISM/hJmXzEFw53kzNAxP7ILsmfVLfZjQ==
+  expiration: 86400
+  refresh-token-expiration: 604800
