@@ -16,6 +16,10 @@ interface Student {
   id: number;
   name: string;
   email: string;
+  userId: number;
+  gender: string;
+  phoneNumber: string;
+  grade: string;
 }
 
 export default function TeacherStudentsPage() {
@@ -62,17 +66,21 @@ export default function TeacherStudentsPage() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>ID</TableHead>
+            <TableHead>STUDENT ID</TableHead>
             <TableHead>Name</TableHead>
+            <TableHead>GENDER</TableHead>
             <TableHead>Email</TableHead>
+            <TableHead>PHONE</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {students.map((student) => (
             <TableRow key={student.id}>
-              <TableCell>{student.id}</TableCell>
+              <TableCell>{student.userId}</TableCell>
               <TableCell>{student.name}</TableCell>
+              <TableCell>{student.gender}</TableCell>
               <TableCell>{student.email}</TableCell>
+              <TableCell>{student.phoneNumber}</TableCell>
             </TableRow>
           ))}
         </TableBody>

@@ -85,13 +85,29 @@ public class AdminService {
     @Transactional
     public void deleteUser(Long id) {
         User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+
+        // 1. Handle Role-specific profiles
         if (user.getRole() == Role.TEACHER) {
             teacherProfileRepository.findByUser(user).ifPresent(teacherProfileRepository::delete);
+
+            // IMPORTANT: Unset this teacher from classes they lead
+            // This avoids the "referenced from table classes" error
+            for (Classe classe : user.getTeachingClasses()) {
+                classe.setTeacher(null);
+            }
         } else if (user.getRole() == Role.STUDENT) {
             studentProfileRepository.findByUser(user).ifPresent(studentProfileRepository::delete);
             attendanceRepository.deleteByStudent(user);
+
+            // IMPORTANT: Remove this student from all class enrollments
+            // This fixes the "referenced from table classe_students" error
+            for (Classe classe : user.getEnrolledClasses()) {
+                classe.getStudents().remove(user);
+            }
         }
-        userRepository.deleteById(id);
+
+        // 2. Finally, delete the user
+        userRepository.delete(user);
     }
 
     // Class CRUD
@@ -188,11 +204,11 @@ public class AdminService {
     public void assignTeacherToClass(Long teacherId, Long classId) {
         User teacher = userRepository.findById(teacherId).orElseThrow(() -> new RuntimeException("Teacher not found"));
         Classe classe = classeRepository.findById(classId).orElseThrow(() -> new RuntimeException("Class not found"));
-        
+
         if (classe.getTeacher() != null && classe.getTeacher().getId().equals(teacherId)) {
             throw new RuntimeException("Teacher is already assigned to this class");
         }
-        
+
         classe.setTeacher(teacher);
         classeRepository.save(classe);
     }
@@ -200,11 +216,11 @@ public class AdminService {
     public void assignStudentToClass(Long studentId, Long classId) {
         User student = userRepository.findById(studentId).orElseThrow(() -> new RuntimeException("Student not found"));
         Classe classe = classeRepository.findById(classId).orElseThrow(() -> new RuntimeException("Class not found"));
-        
+
         if (classe.getStudents().contains(student)) {
             throw new RuntimeException("Student is already assigned to this class");
         }
-        
+
         classe.getStudents().add(student);
         classeRepository.save(classe);
     }

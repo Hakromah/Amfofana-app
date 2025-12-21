@@ -7,6 +7,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -58,6 +60,7 @@ public class User {
     private Set<Classe> teachingClasses = new HashSet<>();
 
     @ManyToMany(mappedBy = "students")
+    @OnDelete(action = OnDeleteAction.CASCADE) // ADD THIS HERE
     @JsonIgnore
     private Set<Classe> enrolledClasses = new HashSet<>();
 }

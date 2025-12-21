@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 import java.util.Set;
 
@@ -19,8 +21,9 @@ public class TeacherProfile {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne
+    @OneToOne(orphanRemoval = true)
     @JoinColumn(name = "user_id", referencedColumnName = "id")
+    @OnDelete(action = OnDeleteAction.CASCADE)
     @JsonIgnoreProperties({"teachingClasses", "enrolledClasses"})
     private User user;
 
@@ -30,5 +33,6 @@ public class TeacherProfile {
             joinColumns = @JoinColumn(name = "teacher_profile_id"),
             inverseJoinColumns = @JoinColumn(name = "subject_id")
     )
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private Set<Subject> subjects;
 }
